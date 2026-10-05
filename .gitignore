@@ -1,0 +1,9 @@
+# macOS clutter
+.DS_Store
+
+# Secrets (e.g. the Hugging Face token)
+.env
+
+# Python environment, which uv rebuilds whenever needed
+.venv/
+__pycache__/
