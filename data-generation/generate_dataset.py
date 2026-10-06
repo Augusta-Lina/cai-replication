@@ -207,14 +207,15 @@ def main():
             ],
         }
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    run_dir = f"{args.output_dir}/{args.repo_id}"
+    os.makedirs(run_dir, exist_ok=True)
     for split in all_ds:
         df = pd.DataFrame(all_ds[split])
         print("=" * 10 + split + "=" * 10)
         print(df)
         post_ds = Dataset.from_dict(all_ds[split])
         post_ds = post_ds.map(process)
-        post_ds.to_json(f"{args.output_dir}/{split}.jsonl")
+        post_ds.to_json(f"{run_dir}/{split}.jsonl")
         if args.push_to_hub:
             repo_id = args.repo_id
             if "/" not in repo_id:  # find the current user
@@ -224,5 +225,6 @@ def main():
             for file, name in zip([__file__, args.constitution_path], ["create_dataset.py", "constitution.json"]):
                 api.upload_file(path_or_fileobj=file, path_in_repo=name, repo_id=repo_id, repo_type="dataset")
 
+    print(f"Saved to {run_dir}" + (f" and pushed to the Hub as {args.repo_id}" if args.push_to_hub else ""))
 
 main()
