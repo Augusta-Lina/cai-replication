@@ -5,15 +5,27 @@ A small-scale replication of Hugging Face's Constitutional AI pipeline
 
 The replication was made using RodPod, a single A40 GPU using a persistent volume of 30GB
 
+## Folder Structure
+
+cai-replication/
+├── README.md             ← how to use the repo: "clone, uv sync, run scripts/…"
+├── scripts/              ← Setup and one-off tasks
+│   └── download_model.py ← Download Mistral
+└── data-generation/      ← Data generation pipeline, Stages 1–2
+    └── generate_dataset.py
+
 ## 1. Setup
 
-Requires [uv](https://docs.astral.sh/uv/). After cloning:
+Requires [uv](https://docs.astral.sh/uv/). On your own machine, after cloning: `uv sync`.
+
+On a RunPod pod (fresh container each session):
 
 ```bash
-uv sync
+cd /root
+git clone https://github.com/Augusta-Lina/cai-replication.git
+cd cai-replication
+source scripts/setup_pod.sh
 ```
-
-This installs the pinned Python version and all packages from `pyproject.toml` and `uv.lock`.
 
 ## 2. Scripts
 
@@ -25,3 +37,9 @@ where `/workspace` is the persistent volume:
 ```bash
 uv run scripts/download_model.py
 ```
+
+### 2.2. Pod Setup
+
+Installs uv, points its cache at the container disk (the `/workspace` volume does not allow
+setting file permissions), and runs `uv sync`. Must be run with `source`, not `bash`, so the
+environment settings persist in your terminal.
