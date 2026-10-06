@@ -15,7 +15,7 @@ Original sources (pinned):
 | `LLMSwarm(isc)` starts TGI servers on a Slurm cluster (6–64 GPUs) | no cluster | one RunPod A40 pod; `scripts/serve_model.sh` starts a vLLM server on it |
 | Model fetched by TGI at startup | — | downloaded once onto the persistent volume by `scripts/download_model.py` (`/workspace/models/Mistral-7B-Instruct-v0.1`) |
 | `AsyncInferenceClient(model=llm_swarm.endpoint)` + `client.text_generation(prompt, max_new_tokens, stop_sequences, temperature)` (lines 67, 83–88) | TGI-specific client | `POST http://localhost:8000/v1/completions` with `{"model": "mistral", "prompt", "max_tokens", "stop", "temperature"}`; answer in `choices[0].text`, token count in `usage.completion_tokens` |
-| `async def process_text`, `asyncio.gather`, `Semaphore` (lines 66, 70, 101–105) | throughput machinery for 45k prompts | plain `def` and a `for` loop |
+| `async def process_text`, `asyncio.gather`, `Semaphore` (lines 66, 70, 101–105) | throughput machinery for 45k prompts | plain `def`; `ThreadPoolExecutor` with `--max_workers` (default 8) plays the Semaphore's role; results sorted by `(split, i)`; failed requests retried twice. `--max_workers 1` gives the sequential baseline. Measured: 54 tok/s at 1 worker, 209 tok/s at 8 |
 | `HfArgumentParser((Args, LLMSwarmConfig))` (line 36) | `LLMSwarmConfig` gone with llm-swarm | `HfArgumentParser((Args,))` |
 | `rate_limit = 500 * isc.instances` (line 64) | unused even in the original | removed |
 | `AutoTokenizer.from_pretrained("mistralai/Mistral-7B-Instruct-v0.1")` (line 40) | fetches from the Hub each run | load from the local model folder (same files) |
