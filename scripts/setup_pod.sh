@@ -9,3 +9,6 @@ export UV_CACHE_DIR=/root/.cache/uv
 uv sync
 
 echo "Pod setup complete. Run scripts with: uv run scripts/<name>.py"
+
+# vLLM goes on the container disk (not in pyproject: Linux/CUDA only, and 3 GB)
+pip install vllm
