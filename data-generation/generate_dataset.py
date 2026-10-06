@@ -136,7 +136,6 @@ def generate(chat):
         if completion.endswith(stop_seq):
             completion = completion[: -len(stop_seq)].rstrip()
     return completion, result["usage"]["completion_tokens"]
-completion, result["usage"]["completion_tokens"]
 
 
 # Block 5: Critique-revision for One Prompt
