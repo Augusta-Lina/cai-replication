@@ -193,6 +193,7 @@ dependencies = [
     { name = "huggingface-hub" },
     { name = "pandas" },
     { name = "python-dotenv" },
+    { name = "requests" },
     { name = "transformers" },
 ]
 
@@ -202,6 +203,7 @@ requires-dist = [
     { name = "huggingface-hub", specifier = ">=1.33.0" },
     { name = "pandas", specifier = ">=3.0.6" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
+    { name = "requests", specifier = ">=2.34.2" },
     { name = "transformers", specifier = ">=5.18.0" },
 ]
 
