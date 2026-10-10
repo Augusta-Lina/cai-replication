@@ -1,0 +1,67 @@
+# Block 1
+# Model arguments
+# -----------------------
+model_name_or_path: Qwen/Qwen2.5-0.5B     # the model to start from, by its Hugging Face name. The script downloads it the first time. 
+model_revision: main                      # which version of that model on the Hub. main means the latest.
+dtype: bfloat16                           # the number format the weights are loaded in. bfloat16 uses half the memory of standard 32-bit numbers, and the A40 handles it natively.
+attn_implementation: sdpa                 # which attention code path to use. sdpa is the one built into PyTorch
+
+# Block 2: LoRA Settings
+# -----------------------
+use_peft: true # on/off switch.
+lora_r: 16 # size of the add-on
+lora_alpha: 32 # add on's scaling factor
+lora_dropout: 0.05
+lora_target_modules: all-linear
+
+# Block 3: Data Training Arguments
+# -----------------------
+# Data training arguments
+chat_template_path: training/sft/chat_template.jinja
+dataset_mixture:
+  datasets:
+    - id: AugustaLina/cai-conversation-dev1791308628
+      config: default
+      split: train_sft
+      columns:
+        - messages
+      weight: 1.0
+    - id: HuggingFaceH4/ultrachat_200k
+      config: default
+      split: test_sft
+      columns:
+        - messages
+      weight: 0.003
+  test_split_size: 16 # actual number
+  seed: 0
+dataset_num_proc: 4
+
+
+# Block 4: SFT trainer config
+# -----------------------
+bf16: true
+do_eval: true
+do_train: true
+eval_strategy: epoch
+gradient_accumulation_steps: 1
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: False
+learning_rate: 2.0e-04
+log_level: info
+logging_steps: 1
+logging_strategy: steps
+lr_scheduler_type: cosine
+max_length: 2048
+max_steps: -1
+num_train_epochs: 3
+output_dir: data/sft-qwen2.5-0.5b-test
+per_device_eval_batch_size: 4
+per_device_train_batch_size: 4
+push_to_hub: false
+remove_unused_columns: true
+report_to: none
+save_strategy: epoch
+save_total_limit: 1
+seed: 42
+warmup_steps: 0.1

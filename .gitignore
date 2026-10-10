@@ -7,3 +7,4 @@
 # Python environment, which uv rebuilds whenever needed
 .venv/
 __pycache__/
+data/
