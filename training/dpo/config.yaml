@@ -1,0 +1,67 @@
+# Block 1: Model arguments
+# -----------------------
+model_name_or_path: data/sft-mistral-7b-lora
+dtype: bfloat16
+attn_implementation: sdpa
+
+# Block 2:Data training arguments
+# -----------------------
+dataset_mixture:
+  datasets:
+    - id: HuggingFaceH4/ultrafeedback_binarized
+      config: default
+      split: train_prefs
+      columns:
+        - chosen
+        - rejected
+      weight: 0.001
+    - id: HuggingFaceH4/ultrafeedback_binarized
+      config: default
+      split: test_prefs
+      columns:
+        - chosen
+        - rejected
+      weight: 0.03
+    - id: AugustaLina/cai-conversation-dev1791308628
+      config: default
+      split: train_prefs
+      columns:
+        - chosen
+        - rejected
+      weight: 1.0
+    - id: AugustaLina/cai-conversation-dev1791308628
+      config: default
+      split: test_prefs
+      columns:
+        - chosen
+        - rejected
+      weight: 1.0
+  test_split_size: 32
+  seed: 0
+dataset_num_proc: 4
+
+# Block 3: DPOTrainer arguments
+# -----------------------
+bf16: true
+beta: 0.1
+do_eval: true
+do_train: true
+eval_strategy: epoch
+gradient_accumulation_steps: 1
+gradient_checkpointing: true
+learning_rate: 5.0e-6
+log_level: info
+logging_steps: 10
+lr_scheduler_type: linear
+max_length: 1024
+num_train_epochs: 3
+optim: rmsprop
+output_dir: data/dpo-mistral-7b-lora
+per_device_train_batch_size: 2
+per_device_eval_batch_size: 8
+push_to_hub: false
+save_strategy: "steps"
+save_steps: 100
+save_total_limit: 1
+seed: 42
+warmup_steps: 0.1
