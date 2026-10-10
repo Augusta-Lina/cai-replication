@@ -213,6 +213,14 @@ def main(script_args, training_args, model_args):
         peft_config=get_peft_config(model_args),
     )
 
+    # Baseline: evaluate the untouched model before any training (not in the original)
+    if training_args.do_eval:
+        logger.info("*** Evaluate baseline (before training) ***")
+        metrics = trainer.evaluate(metric_key_prefix="eval_baseline")
+        metrics["eval_baseline_samples"] = len(dataset[script_args.dataset_test_split])
+        trainer.log_metrics("eval_baseline", metrics)
+        trainer.save_metrics("eval_baseline", metrics)
+
     # Train
     logger.info("*** Train ***")
     checkpoint = None
@@ -263,3 +271,5 @@ if __name__ == "__main__":
     parser = TrlParser((ScriptArguments, SFTConfig, ModelConfig))
     script_args, training_args, model_args = parser.parse_args_and_config()
     main(script_args, training_args, model_args)
+
+

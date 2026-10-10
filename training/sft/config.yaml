@@ -1,7 +1,7 @@
 # Block 1
 # Model arguments
 # -----------------------
-model_name_or_path: Qwen/Qwen2.5-0.5B     # the model to start from, by its Hugging Face name. The script downloads it the first time. 
+model_name_or_path: /workspace/models/Mistral-7B-v0.1  # the model to start from, by its Hugging Face name. The script downloads it the first time. 
 model_revision: main                      # which version of that model on the Hub. main means the latest.
 dtype: bfloat16                           # the number format the weights are loaded in. bfloat16 uses half the memory of standard 32-bit numbers, and the A40 handles it natively.
 attn_implementation: sdpa                 # which attention code path to use. sdpa is the one built into PyTorch
@@ -55,7 +55,7 @@ lr_scheduler_type: cosine
 max_length: 2048
 max_steps: -1
 num_train_epochs: 3
-output_dir: data/sft-qwen2.5-0.5b-test
+output_dir: data/sft-mistral-7b-lora
 per_device_eval_batch_size: 4
 per_device_train_batch_size: 4
 push_to_hub: false
