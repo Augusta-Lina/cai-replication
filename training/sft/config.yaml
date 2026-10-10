@@ -62,6 +62,8 @@ push_to_hub: false
 remove_unused_columns: true
 report_to: none
 save_strategy: epoch
-save_total_limit: 1
+save_total_limit: 2
+load_best_model_at_end: true
+metric_for_best_model: eval_loss
 seed: 42
 warmup_steps: 0.1
