@@ -146,3 +146,117 @@ def get_dataset(args: ScriptArguments) -> DatasetDict:
         return combined_dataset
 
     return DatasetDict({"train": combined_dataset})
+
+# Block 4: load the tokenizer and the SFT model (base model + our adapter)
+# ---------------------
+def get_tokenizer(model_args: ModelConfig) -> AutoTokenizer:
+    """The SFT run saved its tokenizer and chat template into its output folder."""
+    tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    return tokenizer
+
+
+def get_model(model_args: ModelConfig, training_args: DPOConfig) -> PeftModel:
+    """Load the base model, then put the SFT adapter on top of it, ready to keep training."""
+    adapter_dir = model_args.model_name_or_path
+    base_dir = PeftConfig.from_pretrained(adapter_dir).base_model_name_or_path
+    dtype = model_args.dtype if model_args.dtype in ["auto", None] else getattr(torch, model_args.dtype)
+    base = AutoModelForCausalLM.from_pretrained(
+        base_dir,
+        attn_implementation=model_args.attn_implementation,
+        dtype=dtype,
+        use_cache=False if training_args.gradient_checkpointing else True,
+    )
+    logger.info(f"Loaded base model {base_dir}; attaching SFT adapter from {adapter_dir}")
+    return PeftModel.from_pretrained(base, adapter_dir, is_trainable=True)
+
+# Block 5: main (from the handbook's dpo.py)
+# ---------------------
+def main(script_args, training_args, model_args):
+    set_seed(training_args.seed)
+
+    # Logging: print timestamped progress messages to the terminal
+    logging.basicConfig(
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[logging.StreamHandler(sys.stdout)],
+    )
+    log_level = training_args.get_process_log_level()
+    logger.setLevel(log_level)
+    datasets.utils.logging.set_verbosity(log_level)
+    transformers.utils.logging.set_verbosity(log_level)
+    transformers.utils.logging.enable_default_handler()
+    transformers.utils.logging.enable_explicit_format()
+
+    logger.info(f"Model parameters {model_args}")
+    logger.info(f"Script parameters {script_args}")
+    logger.info(f"Training parameters {training_args}")
+
+    # Resume from an earlier checkpoint if the output folder already has one
+    last_checkpoint = None
+    if os.path.isdir(training_args.output_dir):
+        last_checkpoint = get_last_checkpoint(training_args.output_dir)
+    if last_checkpoint is not None and training_args.resume_from_checkpoint is None:
+        logger.info(f"Checkpoint detected, resuming training at {last_checkpoint=}.")
+
+    # Model and tokenizer (the trainer keeps a frozen copy of the adapter as the reference)
+    model = get_model(model_args, training_args)
+    tokenizer = get_tokenizer(model_args)
+
+    # Dataset: keep only the chosen/rejected pairs
+    dataset = get_dataset(script_args)
+    for split in dataset:
+        if "messages" in dataset[split].column_names:
+            dataset[split] = dataset[split].remove_columns("messages")
+
+    # The trainer
+    trainer = DPOTrainer(
+        model,
+        ref_model=None,
+        args=training_args,
+        train_dataset=dataset[script_args.dataset_train_split],
+        eval_dataset=dataset[script_args.dataset_test_split] if training_args.eval_strategy != "no" else None,
+        processing_class=tokenizer,
+    )
+
+    # Baseline: evaluate the SFT model before any DPO training (not in the original)
+    if training_args.eval_strategy != "no":
+        logger.info("*** Evaluate baseline (before training) ***")
+        metrics = trainer.evaluate(metric_key_prefix="eval_baseline")
+        trainer.log_metrics("eval_baseline", metrics)
+        trainer.save_metrics("eval_baseline", metrics)
+
+    # Train
+    logger.info("*** Train ***")
+    checkpoint = None
+    if training_args.resume_from_checkpoint is not None:
+        checkpoint = training_args.resume_from_checkpoint
+    elif last_checkpoint is not None:
+        checkpoint = last_checkpoint
+    train_result = trainer.train(resume_from_checkpoint=checkpoint)
+    metrics = train_result.metrics
+    metrics["train_samples"] = len(dataset[script_args.dataset_train_split])
+    trainer.log_metrics("train", metrics)
+    trainer.save_metrics("train", metrics)
+    trainer.save_state()
+
+    # Evaluate on the held-out pairs
+    if training_args.eval_strategy != "no":
+        metrics = trainer.evaluate()
+        trainer.log_metrics("eval", metrics)
+        trainer.save_metrics("eval", metrics)
+
+    # Save the adapter, and push to the Hub if asked
+    trainer.save_model(training_args.output_dir)
+    logger.info(f"Model saved to {training_args.output_dir}")
+    if training_args.push_to_hub:
+        trainer.push_to_hub(dataset_name=script_args.dataset_name)
+
+# Block 6: entry point
+# ---------------------
+if __name__ == "__main__":
+    parser = TrlParser((ScriptArguments, DPOConfig, ModelConfig))
+    script_args, training_args, model_args = parser.parse_args_and_config()
+    main(script_args, training_args, model_args)
+ß
